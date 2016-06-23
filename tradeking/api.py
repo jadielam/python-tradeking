@@ -94,10 +94,11 @@ class API(object):
     def request(self, method, url, format='json', decode=True, **kwargs):
         if format:
             url = '.'.join((url, format))
-
+        
         r = self._api.request(method, url, **kwargs)
 
         if decode:
+            print(r)
             r = r.json()
 
         return r
@@ -170,10 +171,40 @@ class News(object):
         path = self._api.join(BASE_URL, 'market', 'news', article_id)
         return self._api.get(path, **kwargs)
 
+    def _search_jadiel(self, symbols = None, maxhits = None,
+                       startdate = None, enddate = None, **kwargs):
+        
+        if not symbols or len(symbols) == 0:
+            raise ValueError('Symbols are required')
+        
+        if (not startdate and enddate) or (not enddate and startdate):
+            raise ValueError('Both startdate and endate are required if one '
+                             'is specified')
+        
+        parameters = []
+        symbolsString = "symbols=" + ','.join(symbols)
+        parameters.append(symbolsString)
+        
+        if maxhits:
+            maxhitsString = 'maxhits=' + str(maxhits)
+            parameters.append(maxhitsString)
+        
+        if startdate:
+            startdateString = 'startdate=' + str(startdate)
+            enddateString = 'enddate=' + str(enddate)
+            parameters.append(startdateString)
+            parameters.append(enddateString)
+        
+        parametersJoin = '&'.join(parameters)
+
+        path = self._api.join(BASE_URL, 'market', 'news', 'search.json?' + parametersJoin)
+        print(path)
+        return self._api.get(path, format = None)
+    
     def _search(self, keywords=None, symbols=None, maxhits=None,
                 startdate=None, enddate=None, **kwargs):
-        if not keywords and not symbols:
-            raise ValueError('Either keywords or symbols are required')
+        #if not keywords and not symbols:
+        #    raise ValueError('Either keywords or symbols are required')
 
         data = {}
 
@@ -200,17 +231,21 @@ class News(object):
         if startdate and enddate:
             data['startdate'] = startdate
             data['enddate'] = enddate
-
-        path = self._api.join(BASE_URL, 'market', 'news', 'search')
-        return self._api.post(path, data=data, **kwargs)
-
+        
+        #symbols = '?symbols=' + ','.join(symbols)
+        keywords = '?symbols=' + ','.join(keywords)
+        path = self._api.join(BASE_URL, 'market', 'news', 'search.json?maxhits=10')
+        #return self._api.post(path, data=data, **kwargs)
+        print(path)
+        return self._api.get(path, format = None)
+    
     def article(self, article_id):
         r = self._article(article_id=article_id)
         return r['response']['article']
 
     def search(self, keywords=None, symbols=None, maxhits=None, startdate=None,
                enddate=None):
-        r = self._search(keywords=keywords, symbols=symbols, maxhits=maxhits,
+        r = self._search_jadiel(symbols=symbols, maxhits=maxhits,
                          startdate=startdate, enddate=enddate)
         return r['response']['articles']['article']
 
@@ -302,7 +337,8 @@ class Market(object):
 
     def quotes(self, symbols, fields=None):
         r = self._quotes(symbols=symbols, fields=fields)
-        return _quotes_to_df(r['response']['quotes']['quote'])
+        return r
+        #return _quotes_to_df(r['response']['quotes']['quote'])
 
     def toplist(self, list_type='toppctgainers'):
         r = self._toplist(list_type=list_type)
